@@ -39,7 +39,7 @@ here:
 
 Here is how we will do this (`Dockerfile`):
 
-```
+```{.Dockerfile}
 FROM rabbitmq:3.6.6-management
 
 COPY rabbitmq.config /etc/rabbitmq/rabbitmq.config
@@ -63,7 +63,7 @@ CMD ["/init.sh"]
 We are taking our own `rabbitmq.config` file that has only one
 important bit to it - cluster recovery mode:
 
-```
+```{.erlang}
 %% -*- mode: erlang -*-
 [
  {rabbit,
@@ -77,7 +77,7 @@ And we change our entry point to our own script where we can pre-configure a lot
 of things (for that reason we needed to have `python` installed as
 part of our image):
 
-```
+```{.bash}
 #!/usr/bin/env bash
 
 (
@@ -95,7 +95,12 @@ part of our image):
   rabbitmqctl add_user $RABBITMQ_USER $RABBITMQ_PASSWORD 2>/dev/null
   rabbitmqctl set_user_tags $RABBITMQ_USER administrator management
   rabbitmqctl set_permissions -p / $RABBITMQ_USER  ".*" ".*" ".*"
-  rabbitmqctl set_policy SyncQs '.*' '{"ha-mode":"all","ha-sync-mode":"automatic"}' -priority 0 -apply-to queues
+  rabbitmqctl set_policy \
+    SyncQs \
+    '.*' \
+    '{"ha-mode":"all","ha-sync-mode":"automatic"}' \
+    --priority 0 \
+    --apply-to queues
 
   echo "*** User '$RABBITMQ_USER' with password '$RABBITMQ_PASSWORD' completed. ***"
   echo "*** Log in the WebUI at port 15672 (example: http:/localhost:15672) ***"
@@ -107,8 +112,11 @@ part of our image):
     echo -n "Declaring '$RABBITMQ_FIREHOSE_QUEUENAME' queue ... "
     ./rabbitmqadmin declare queue name=$RABBITMQ_FIREHOSE_QUEUENAME
     ./rabbitmqadmin list queues
-    echo -n "Declaring binding from 'amq.rabbitmq.trace' to '$RABBITMQ_FIREHOSE_QUEUENAME' with '$RABBITMQ_FIREHOSE_ROUTINGKEY' routing key ... "
-    ./rabbitmqadmin declare binding source=amq.rabbitmq.trace destination=$RABBITMQ_FIREHOSE_QUEUENAME routing_key=$RABBITMQ_FIREHOSE_ROUTINGKEY
+    echo -n "Declaring binding from 'amq.rabbitmq.trace' to '$RABBITMQ_FIREHOSE_QUEUENAME' ... "
+    ./rabbitmqadmin declare binding \
+      source=amq.rabbitmq.trace \
+      destination=$RABBITMQ_FIREHOSE_QUEUENAME \
+      routing_key=$RABBITMQ_FIREHOSE_ROUTINGKEY
     ./rabbitmqadmin list bindings
     rabbitmqctl trace_on
     echo "<< Enabling Firehose ... DONE >>>"
@@ -137,7 +145,7 @@ server (let's say on `SERVER1`, `SERVER3` and
 
 Then, we need to label our swarm cluster nodes appropriately.
 
-```
+```{.bash}
 $ docker node ls
 ID                           HOSTNAME  STATUS  AVAILABILITY  MANAGER
 6so183185g8qd11aoix21rea1    SERVER5    Ready   Active        Reachable
@@ -154,7 +162,7 @@ $ docker node update -label-add rabbitmq=3 6so183185g8qd11aoix21rea1
 It is possible to see that label has been correctly set by invoking following
 command:
 
-```
+```{.bash}
 $ docker node inspect au00yheo9dvstjwvk3lo4l2oe
 $ docker node inspect 920kij34jhrz76lprdthz2utz
 $ docker node inspect 6so183185g8qd11aoix21rea1
@@ -166,7 +174,7 @@ $ docker node inspect 6so183185g8qd11aoix21rea1
 And now, after we have configured our labels and created folder for mount point,
 we can revisit service creation instructions for e.g. 3-noded RabbitMQ cluster:
 
-```
+```{.bash}
 $ docker service create \
     -name rabbit-1 \
     -network net \
